@@ -2,6 +2,7 @@ package midicom
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -46,9 +47,14 @@ func doConnection(filterMidiName string) (stop func(), err error) {
 		switch {
 		case msg.GetSysEx(&bt):
 			fmt.Printf("%s", bt)
-		case msg.GetNoteStart(&ch, &key, &vel):
+			if ntfyMessage != "" && ntfyTopic != "" && strings.Contains(string(bt), ntfyMessage) {
+				log.Infof("sending ntfy to %s", ntfyTopic)
+				http.Post("https://ntfy.sh/"+ntfyTopic, "text/plain",
+					strings.NewReader("comms: "+string(bt)))
+			}
+		case msg.GetNoteStart(&ch, &key, &vel) && !sysexOnly:
 			log.Infof("note_on=%s, ch=%v, vel=%v\n", midi.Note(key), ch, vel)
-		case msg.GetNoteEnd(&ch, &key):
+		case msg.GetNoteEnd(&ch, &key) && !sysexOnly:
 			log.Infof("note_off=%s, ch=%v\n", midi.Note(key), ch)
 		default:
 			// ignore
@@ -66,9 +72,15 @@ func doConnection(filterMidiName string) (stop func(), err error) {
 }
 
 var filterMidiName string
+var ntfyTopic string
+var ntfyMessage string
+var sysexOnly bool
 
-func Run(name string) {
+func Run(name string, ntfy string, notification string, sysex bool) {
 	filterMidiName = name
+	ntfyTopic = ntfy
+	ntfyMessage = notification
+	sysexOnly = sysex
 
 	var err error
 	done := make(chan struct{})
