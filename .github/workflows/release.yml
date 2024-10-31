@@ -36,4 +36,37 @@ jobs:
         files: |
           comms_${{ github.event.release.name }}_checksums.txt
           comms_linux_amd64
-          
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+
+    - name: Install required packages
+      shell: msys2 {0}
+      run: |
+        pacman -S --noconfirm mingw-w64-x86_64-rtmidi mingw-w64-x86_64-toolchain
+
+    - name: Set up environment variables for Go
+      run: |
+        $env:Path += ";C:\\msys64\\mingw64\\bin"
+        $env:CGO_ENABLED = "1"
+        $env:CC = "x86_64-w64-mingw32-gcc"
+        $env:CGO_LDFLAGS = "-static"
+    - name: Build Go project
+      run: |
+        go build -v -x
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          comms.exe
+
+
