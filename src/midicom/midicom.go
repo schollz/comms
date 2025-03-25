@@ -57,6 +57,7 @@ func doConnection(filterMidiName string) (stop func(), err error) {
 		case msg.GetNoteEnd(&ch, &key) && !sysexOnly:
 			log.Infof("note_off=%s, ch=%v\n", midi.Note(key), ch)
 		default:
+			log.Tracef("msg=%v", msg)
 			// ignore
 		}
 	}, midi.UseSysEx(), midi.SysExBufferSize(4096))
